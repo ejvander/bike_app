@@ -1,0 +1,12 @@
+{
+  "name": "bare_bike_app",
+  "displayName": "bare_bike_app",
+  "expo": {
+    "name": "bare_bike_app",
+    "slug": "bare_bike_app",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}

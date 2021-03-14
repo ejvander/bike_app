@@ -1,11 +1,4 @@
-// @flow
-
-import {
-  EventEmitter,
-  PermissionsAndroid,
-  Platform,
-  SliderComponent,
-} from "react-native";
+import { PermissionsAndroid, Platform } from "react-native";
 import { buffers, channel, eventChannel } from "redux-saga";
 import {
   fork,
@@ -19,7 +12,6 @@ import {
   select,
 } from "redux-saga/effects";
 import {
-  Account,
   log,
   logError,
   updateConnectionState,
@@ -33,13 +25,7 @@ import {
   ReduxState,
   updateBikeTelemetry,
   BikeStatus,
-  fetchedAccounts,
-  SaveRideAction,
-  clearRide,
-  FetchSessionsAction,
-  fetchedSessions,
-  fetchedSession,
-} from "./Reducer";
+} from "../Reducer";
 import {
   BleManager,
   BleError,
@@ -48,16 +34,11 @@ import {
   LogLevel,
 } from "react-native-ble-plx";
 import { Buffer } from "buffer";
-import { API_URL } from "@env";
 
 const CHARACTERISTIC_f3_UUID = "0bf669f3-45f2-11e7-9598-0800200c9a66";
 const CHARACTERISTIC_f4_UUID = "0bf669f4-45f2-11e7-9598-0800200c9a66";
 const CHARACTERISTIC_f2_UUID = "0bf669f2-45f2-11e7-9598-0800200c9a66";
 const SERVICE_UUID = "0bf669f1-45f2-11e7-9598-0800200c9a66";
-
-const PORT = __DEV__ ? 5101 : 5100;
-
-const API_ENDPOINT = API_URL + ":" + PORT + "/v1";
 
 export const getBikeStatus = (state: ReduxState) => state.bikeTelemetry[0];
 
@@ -76,66 +57,6 @@ export function* bleSaga(): Generator<any, any, any> {
   yield fork(handleBleState, manager);
   yield fork(handleConnection, manager, connection_chan);
   yield fork(handleData, manager, connection_chan);
-  yield fork(fetchAccounts);
-  yield fork(saveRide);
-  yield fork(fetchSessions);
-  yield fork(fetchSession);
-}
-
-function* fetchAccounts(): Generator<any, any, any> {
-  while (true) {
-    yield take("FETCH_ACCOUNTS");
-    let res = yield call(fetch, API_ENDPOINT + "/get_users");
-
-    let json = yield res.json();
-    console.log(json);
-    yield put(fetchedAccounts(json.users));
-  }
-}
-
-function* fetchSessions(): Generator<any, any, any> {
-  while (true) {
-    let action: FetchSessionsAction = yield take("FETCH_SESSIONS");
-    let res = yield call(
-      fetch,
-      API_ENDPOINT + "/get_sessions" + "/" + action.id
-    );
-
-    let json = yield res.json();
-    console.log(json);
-    yield put(fetchedSessions(json.sessions));
-  }
-}
-
-function* fetchSession(): Generator<any, any, any> {
-  while (true) {
-    let action: FetchSessionsAction = yield take("FETCH_SESSION");
-    console.log(action);
-    let res = yield call(
-      fetch,
-      API_ENDPOINT + "/get_session" + "/" + action.id
-    );
-
-    let json = yield res.json();
-    console.log(json);
-    yield put(fetchedSession(json.session_data));
-  }
-}
-
-function* saveRide(): Generator<any, any, any> {
-  while (true) {
-    let action: SaveRideAction = yield take("SAVE_RIDE");
-    let res = yield call(
-      fetch,
-      API_ENDPOINT + "/save_session/" + action.user_id,
-      {
-        method: "POST",
-        body: JSON.stringify(action.ride),
-      }
-    );
-    yield put(clearRide());
-    console.log(res);
-  }
 }
 
 // This generator tracks our BLE state. Based on that we can enable scanning, get rid of devices etc.
@@ -390,18 +311,6 @@ function parse_f4(val: string, bikeStatus: BikeStatus) {
     // Samples happen every seconds, so Joules = watts*second
     let calories = bikeStatus.calories + watts / 1000;
 
-    let timer =
-      Math.floor(seconds_since_start / 60).toString() +
-      ":" +
-      (seconds_since_start % 60).toString();
-
-    /*console.log(
-      `timer: ${timer}, speed: ${speed} mph, ` +
-        `rpm: ${rpm}, distance: ${(distance * 7.0) / 1860} miles, ` +
-        `Calories: ${calories}, ` +
-        `watts: ${watts}, resistance: ${bikeStatus.resistance}`
-    );*/
-
     return updateBikeTelemetry(
       seconds_since_start,
       speed,
@@ -619,7 +528,7 @@ function* fetch_data(device: Device) {
         let data = f4_event.characteristic;
 
         let value = Buffer.from(data.value, "base64").toString("hex");
-        let bikeStatus = yield select(getBikeStatus);
+        let bikeStatus: BikeStatus = yield select(getBikeStatus);
         console.log("Bike status: " + bikeStatus);
 
         let response = parse_f4(value, bikeStatus);

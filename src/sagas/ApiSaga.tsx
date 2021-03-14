@@ -9,7 +9,7 @@ import {
 } from "../Reducer";
 import { API_URL } from "@env";
 
-const PORT = false ? 5101 : 5100;
+const PORT = __DEV__ ? 5101 : 5100;
 
 const API_ENDPOINT = API_URL + ":" + PORT + "/v1";
 

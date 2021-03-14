@@ -21,4 +21,6 @@ target 'barebikeapp' do
   # post_install do |installer|
   #    flipper_post_install(installer)
   # end
+  pod 'react-native-ble-plx', :path => '../node_modules/react-native-ble-plx'
+
 end
